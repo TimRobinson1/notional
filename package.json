@@ -10,6 +10,17 @@
   },
   "author": "TimRobinson1",
   "license": "ISC",
+  "jest": {
+    "rootDir": "src",
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/(__tests__/)?.*(\\.|/)(test|spec))\\.(j|t)s?$",
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ]
+  },
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
@@ -33,6 +44,7 @@
     "lint-staged": "^10.1.3",
     "prettier": "^2.0.4",
     "rimraf": "^3.0.0",
+    "ts-jest": "^25.3.1",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.5"
   }

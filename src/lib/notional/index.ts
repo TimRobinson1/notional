@@ -1,6 +1,6 @@
 import { Config, TableKeyCache } from './types';
 
-export default class Notion {
+export default class Notional {
   private apiKey: string;
   private userId: string;
   private cachingEnabled: boolean;
@@ -17,10 +17,16 @@ export default class Notion {
     this.tableKeyCache = cache || {};
   }
 
+  public getCachedTableKeys() {
+    return this.tableKeyCache;
+  }
+
   public cacheTableKeys(tableKeys: TableKeyCache) {
     this.tableKeyCache = {
       ...this.tableKeyCache,
       ...tableKeys,
     };
+
+    return this.tableKeyCache;
   }
 }
