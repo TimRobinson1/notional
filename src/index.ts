@@ -1,1 +1,1 @@
-// Here's where the Notion magic happens
+export * from './modules/notional';

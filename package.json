@@ -4,16 +4,16 @@
   "description": "An unofficial Notion client",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon",
+    "test": "jest",
     "build": "rimraf ./build && tsc",
     "start": "npm run build && node build/index.js"
   },
   "author": "TimRobinson1",
   "license": "ISC",
   "devDependencies": {
+    "@types/jest": "^25.2.1",
     "@types/node": "^13.5.0",
-    "nodemon": "^2.0.2",
+    "jest": "^25.3.0",
     "rimraf": "^3.0.0",
     "ts-node": "^8.6.2",
     "typescript": "^3.7.5"
