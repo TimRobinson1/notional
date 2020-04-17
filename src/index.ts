@@ -1,1 +1,1 @@
-export * from './modules/notional';
+export * from './lib/notional';
