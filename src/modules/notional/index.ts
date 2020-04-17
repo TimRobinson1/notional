@@ -6,12 +6,7 @@ export default class Notion {
   private cachingEnabled: boolean;
   private tableKeyCache: TableKeyCache;
 
-  constructor({
-    apiKey,
-    userId,
-    useCache,
-    cache,
-  }: Config) {
+  constructor({ apiKey, userId, useCache, cache }: Config) {
     if (!apiKey || !userId) {
       throw new Error('Both an apiKey and userId are required');
     }
@@ -26,6 +21,6 @@ export default class Notion {
     this.tableKeyCache = {
       ...this.tableKeyCache,
       ...tableKeys,
-    }
+    };
   }
 }
