@@ -19,7 +19,19 @@ type BaseValue = {
   version: number;
 };
 
-type TextNodeModifiers = string[][];
+export type DateValues = {
+  type: 'datetime' | 'daterange' | 'date';
+  start_date: string;
+  end_date?: string;
+  start_time?: string;
+  end_time?: string;
+  time_zone?: string;
+};
+
+export type DateModifiers = [['d', DateValues]];
+export type UserModifiers = [['u', string]];
+
+export type TextNodeModifiers = string[][] | DateModifiers | UserModifiers;
 
 export type TextNode = [string, TextNodeModifiers?];
 

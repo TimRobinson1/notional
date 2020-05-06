@@ -142,6 +142,6 @@ export default class Notional {
       tableKeys = tableUrlOrKeySet;
     }
 
-    return new Table(tableKeys);
+    return new Table(tableKeys, this.http);
   }
 }
