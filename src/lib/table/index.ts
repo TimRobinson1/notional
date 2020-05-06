@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import filter from 'lodash/filter';
+import isNil from 'lodash/isNil';
 import {
   TableKeySet,
   TextNode,
@@ -8,12 +9,22 @@ import {
   UserModifiers,
 } from '../notional/types';
 import { AxiosInstance } from 'axios';
+import TransactionManager from './transaction-manager';
 
 export default class Table {
+  transactionManager: TransactionManager;
+
   constructor(
     private readonly keys: TableKeySet,
     private readonly axios: AxiosInstance,
-  ) {}
+    private readonly userId: string,
+  ) {
+    this.transactionManager = new TransactionManager(
+      this.axios,
+      this.keys,
+      this.userId,
+    );
+  }
 
   private isDateModifier(
     modifiers: TextNodeModifiers,
@@ -98,6 +109,15 @@ export default class Table {
     return response.data;
   }
 
+  private async getCollectionSchema() {
+    const { recordMap } = await this.queryCollection(this.keys);
+    return get(
+      recordMap,
+      `collection.${this.keys.collectionId}.value.schema`,
+      {},
+    );
+  }
+
   public getKeys() {
     return this.keys;
   }
@@ -114,7 +134,7 @@ export default class Table {
 
     const data = rowData.map((row: any) => {
       // @ts-ignore
-      return Object.entries(schema).reduce((data, [key, headingData]) => {
+      return Object.entries(schema).reduce((data, [key, headingData]: any) => {
         if (!row || !row[key]) {
           // @ts-ignore
           data[headingData.name] = this.getDefaultValueForType(
@@ -133,5 +153,34 @@ export default class Table {
     });
 
     return filter(data, filters || {});
+  }
+
+  public async insertRows(data: object[]) {
+    const schema = await this.getCollectionSchema();
+    const schemaMap = Object.keys(schema).reduce((obj, key) => {
+      const { name, ...rest } = schema[key];
+
+      if (!isNil(name)) {
+        // @ts-ignore
+        obj[name] = { id: key, ...rest };
+      }
+
+      return obj;
+    }, {});
+
+    const entriesToInsert = data.map(datum =>
+      Object.entries(datum).map(([key, value]) => {
+        // @ts-ignore
+        const { id, type } = schemaMap[key];
+
+        return {
+          id,
+          type,
+          value,
+        };
+      }),
+    );
+
+    return this.transactionManager.insert(entriesToInsert);
   }
 }
