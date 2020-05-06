@@ -1,8 +1,10 @@
+export type TableKeySet = {
+  collectionId: string;
+  collectionViewId: string;
+};
+
 export type TableKeyCache = {
-  [tableIdentifier: string]: {
-    collectionId: string;
-    collectionViewId: string;
-  };
+  [tableIdentifier: string]: TableKeySet;
 };
 
 export type Config = {

@@ -1,6 +1,12 @@
 import axios, { AxiosInstance } from 'axios';
-import { Config, TableKeyCache, NotionPageChunkResponse } from './types';
+import {
+  Config,
+  TableKeyCache,
+  NotionPageChunkResponse,
+  TableKeySet,
+} from './types';
 import { URL } from 'url';
+import Table from '../table';
 
 export default class Notional {
   private apiKey: string;
@@ -46,6 +52,14 @@ export default class Notional {
     return `${urlHost}/${company}`;
   }
 
+  private formatUriFromURL(pageUrl: string) {
+    const { pathname } = new URL(pageUrl);
+    const baseUrl = this.getBaseUrl(pageUrl);
+    const collectionId = pathname.substring(pathname.length - 32);
+
+    return `${baseUrl}/${collectionId}`;
+  }
+
   private async loadPageChunk<T>(pageId: string): Promise<T> {
     const response = await this.http.post<T>('/loadPageChunk', {
       ...this.baseConfig,
@@ -53,6 +67,28 @@ export default class Notional {
     });
 
     return response.data;
+  }
+
+  private async getTableKeysFromUrl(url: string): Promise<TableKeySet> {
+    // TODO: support fetching & returning custom view from "v" query parameter
+    const uri = this.formatUriFromURL(url);
+
+    if (this.tableKeyCache[uri]) {
+      return this.tableKeyCache[uri];
+    }
+
+    const tableIds = await this.getTableIdsFromPage(uri);
+    const keys = Object.keys(tableIds);
+
+    if (keys.length === 0) {
+      throw new Error(`No table found on URL "${url}"`);
+    }
+
+    if (keys.length > 1) {
+      throw new Error(`Multiple tables found on URL "${url}"`);
+    }
+
+    return tableIds[keys[0]];
   }
 
   public getCachedTableKeys() {
@@ -85,7 +121,7 @@ export default class Notional {
 
         keyObject[tableUrl] = {
           collectionId,
-          // TODO: Be more flexible/intelligent in choice of view
+          // TODO: Be more flexible in choice of view
           collectionViewId: collection.value.view_ids[0],
         };
 
@@ -95,5 +131,17 @@ export default class Notional {
     this.cacheTableKeys(tableKeys);
 
     return tableKeys;
+  }
+
+  public async table(tableUrlOrKeySet: string | TableKeySet) {
+    let tableKeys: TableKeySet;
+
+    if (typeof tableUrlOrKeySet === 'string') {
+      tableKeys = await this.getTableKeysFromUrl(tableUrlOrKeySet);
+    } else {
+      tableKeys = tableUrlOrKeySet;
+    }
+
+    return new Table(tableKeys);
   }
 }
