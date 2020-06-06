@@ -321,4 +321,12 @@ export default class Table {
       data.map((block: any) => block.id),
     );
   }
+
+  public where(filters: object = {}) {
+    return {
+      update: (data: object) => this.updateRows(data, filters),
+      delete: () => this.deleteRows(filters),
+      get: () => this.getRows(filters),
+    };
+  }
 }
