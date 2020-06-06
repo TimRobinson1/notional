@@ -142,6 +142,10 @@ export default class Notional {
       tableKeys = tableUrlOrKeySet;
     }
 
-    return new Table(tableKeys, this.http, this.userId);
+    const table = new Table(tableKeys, this.http, this.userId);
+
+    await table.getCollectionSchema();
+
+    return table;
   }
 }

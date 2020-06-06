@@ -1,4 +1,5 @@
 import get from 'lodash/get';
+import compact from 'lodash/compact';
 import filter from 'lodash/filter';
 import isNil from 'lodash/isNil';
 import {
@@ -13,6 +14,9 @@ import TransactionManager from './transaction-manager';
 
 export default class Table {
   transactionManager: TransactionManager;
+  queryCaching: boolean;
+  cachedQueryData: object | null;
+  schema: object | null;
 
   constructor(
     private readonly keys: TableKeySet,
@@ -24,6 +28,17 @@ export default class Table {
       this.keys,
       this.userId,
     );
+    this.queryCaching = false;
+    this.cachedQueryData = null;
+    this.schema = null;
+  }
+
+  private setQueryCaching(caching: boolean) {
+    this.queryCaching = caching;
+
+    if (!caching) {
+      this.cachedQueryData = null;
+    }
   }
 
   private isDateModifier(
@@ -84,10 +99,35 @@ export default class Table {
     }
   }
 
+  // Currently only supports simple AND filter objects
+  private async formatFilters(filters: object): Promise<any> {
+    const schema = await this.getCollectionSchema();
+    const formattedFilters = Object.entries(filters).map(([key, value]) => ({
+      // @ts-ignore
+      property: schema[key],
+      filter: {
+        operator: 'string_is',
+        value: {
+          type: 'exact',
+          value,
+        },
+      },
+    }));
+
+    return {
+      filters: formattedFilters,
+      operator: 'and',
+    };
+  }
+
   private async queryCollection({
     collectionId,
     collectionViewId,
   }: TableKeySet) {
+    if (this.queryCaching && this.cachedQueryData) {
+      return Promise.resolve(this.cachedQueryData);
+    }
+
     const response = await this.axios.post('/queryCollection', {
       collectionId,
       collectionViewId,
@@ -106,23 +146,46 @@ export default class Table {
       },
     });
 
+    if (this.queryCaching) {
+      this.cachedQueryData = response.data;
+    }
+
     return response.data;
   }
 
-  private async getCollectionSchema() {
-    const { recordMap } = await this.queryCollection(this.keys);
-    return get(
-      recordMap,
-      `collection.${this.keys.collectionId}.value.schema`,
+  public async getCollectionSchema() {
+    if (this.schema) {
+      return Promise.resolve(this.schema);
+    }
+
+    const collectionBlocks = await this.queryCollection(this.keys);
+
+    const rawSchema = get(
+      collectionBlocks,
+      `recordMap.collection.${this.keys.collectionId}.value.schema`,
       {},
     );
+
+    this.schema = Object.keys(rawSchema).reduce((obj, key) => {
+      // @ts-ignore
+      const { name, ...rest } = rawSchema[key];
+
+      if (!isNil(name)) {
+        // @ts-ignore
+        obj[name] = { id: key, ...rest };
+      }
+
+      return obj;
+    }, {});
+
+    return this.schema;
   }
 
   public getKeys() {
     return this.keys;
   }
 
-  public async getRows(filters?: object) {
+  public async getRows(filters: object = {}) {
     const { result, recordMap } = await this.queryCollection(this.keys);
     const blocks = result.blockIds.map((id: string) => recordMap.block[id]);
     const schema = get(
@@ -152,35 +215,107 @@ export default class Table {
       }, {});
     });
 
-    return filter(data, filters || {});
+    return filter(data, filters);
   }
 
   public async insertRows(data: object[]) {
-    const schema = await this.getCollectionSchema();
-    const schemaMap = Object.keys(schema).reduce((obj, key) => {
-      const { name, ...rest } = schema[key];
-
-      if (!isNil(name)) {
-        // @ts-ignore
-        obj[name] = { id: key, ...rest };
-      }
-
-      return obj;
-    }, {});
-
+    const schemaMap = await this.getCollectionSchema();
     const entriesToInsert = data.map(datum =>
-      Object.entries(datum).map(([key, value]) => {
-        // @ts-ignore
-        const { id, type } = schemaMap[key];
+      compact(
+        Object.entries(datum).map(([key, value]) => {
+          // @ts-ignore
+          const schemaData = schemaMap[key];
 
-        return {
-          id,
-          type,
-          value,
-        };
-      }),
+          if (!schemaData) {
+            console.warn(`Unrecognised key "${key}". Ignoring.`);
+            return;
+          }
+
+          const { id, type } = schemaData;
+          return {
+            id,
+            type,
+            value,
+          };
+        }),
+      ),
     );
 
     return this.transactionManager.insert(entriesToInsert);
+  }
+
+  public async updateRows(updateData: object, filters: object) {
+    this.setQueryCaching(true);
+
+    const { result, recordMap } = await this.queryCollection(this.keys);
+    const blocks = result.blockIds.map((id: string) => recordMap.block[id]);
+    const schema = get(
+      recordMap,
+      `collection.${this.keys.collectionId}.value.schema`,
+      {},
+    );
+
+    const rowData = blocks.map((block: any) => {
+      if (block.value.properties) {
+        return {
+          block_id: block.value.id,
+          block_data: block.value.properties,
+        };
+      }
+    });
+
+    const filterKeys = Object.keys(filters);
+    const data = rowData
+      .map((row: any) => {
+        let filterOutRow = true;
+
+        const formattedData = Object.entries(schema).reduce(
+          (data, [key, headingData]: any) => {
+            let value;
+            if (!row || !row.block_data || !row.block_data[key]) {
+              value = this.getDefaultValueForType(headingData.type);
+            } else {
+              value = this.formatRawDataToType(
+                row.block_data[key],
+                headingData.type,
+              );
+            }
+
+            if (
+              filterKeys.includes(headingData.name) &&
+              // @ts-ignore
+              filters[headingData.name] === value
+            ) {
+              filterOutRow = false;
+            }
+
+            data = data.concat({
+              // @ts-ignore
+              id: key,
+              name: headingData.name,
+              type: headingData.type,
+              // @ts-ignore
+              value: updateData[headingData.name] || value,
+            });
+
+            return data;
+          },
+          [],
+        );
+
+        if (filterOutRow) {
+          return;
+        }
+
+        // @ts-ignore
+        return { id: row.block_id, data: formattedData };
+      })
+      .filter(Boolean);
+
+    const update = await this.transactionManager.update(data);
+
+    this.setQueryCaching(false);
+
+    return update;
   }
 }

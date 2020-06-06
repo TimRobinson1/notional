@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import moment from 'moment';
 import { AxiosInstance } from 'axios';
 import { TableKeySet } from '../notional/types';
+import { UpdateData } from './types';
 
 const NOTION_STAND_IN_NOTATION = '‣';
 
@@ -33,6 +34,7 @@ export default class TransactionManager {
     };
   }
 
+  // TODO: Ensure all types are supported
   private formatToNotionTextNode(type: string, value: any) {
     switch (type) {
       case 'url':
@@ -55,6 +57,34 @@ export default class TransactionManager {
     }
   }
 
+  public async update(insertionData: UpdateData[]) {
+    const now = new Date().getTime();
+    const transactions = insertionData.map(({ id, data }) => ({
+      id: uuid(),
+      operations: [
+        ...data.map((entry: any) => ({
+          id: id,
+          table: 'block',
+          path: ['properties', entry.id],
+          command: 'set',
+          args: this.formatToNotionTextNode(entry.type, entry.value),
+        })),
+        {
+          id,
+          table: 'block',
+          path: ['last_edited_time'],
+          command: 'set',
+          args: now,
+        },
+      ],
+    }));
+
+    return await this.axios.post('submitTransaction', {
+      requestId: uuid(),
+      transactions,
+    });
+  }
+
   public async insert(data: object[][]) {
     const newBlockId = uuid();
     const now = new Date().getTime();
@@ -66,7 +96,6 @@ export default class TransactionManager {
         table: 'block',
         path: ['properties', entry.id],
         command: 'set',
-        // TODO: Ensure all types are supported
         args: this.formatToNotionTextNode(entry.type, entry.value),
       })),
     }));
