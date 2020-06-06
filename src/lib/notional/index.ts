@@ -9,10 +9,8 @@ import { URL } from 'url';
 import Table from '../table';
 import Block from '../block';
 
-export default class Notional {
-  private apiKey: string;
+export class Notional {
   private userId: string;
-  private cachingEnabled: boolean;
   private tableKeyCache: TableKeyCache;
   private http: AxiosInstance;
 
@@ -23,14 +21,12 @@ export default class Notional {
     verticalColumns: false,
   };
 
-  constructor({ apiKey, userId, useCache, cache }: Config) {
+  constructor({ apiKey, userId, cache }: Config) {
     if (!apiKey || !userId) {
       throw new Error('Both an apiKey and userId are required');
     }
 
-    this.apiKey = apiKey;
     this.userId = userId;
-    this.cachingEnabled = useCache == undefined ? true : useCache;
     this.tableKeyCache = cache || {};
     this.http = axios.create({
       baseURL: 'https://www.notion.so/api/v3/',
@@ -154,4 +150,19 @@ export default class Notional {
   public block(blockId: string) {
     return new Block(blockId, this.http, this.userId);
   }
+}
+
+export default function notional({
+  apiKey,
+  userId,
+}: {
+  apiKey: string;
+  userId: string;
+}) {
+  const notion = new Notional({ apiKey, userId });
+
+  return {
+    block: notion.block.bind(notion),
+    table: notion.table.bind(notion),
+  };
 }
