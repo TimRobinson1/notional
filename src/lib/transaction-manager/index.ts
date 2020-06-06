@@ -2,15 +2,15 @@ import { v4 as uuid } from 'uuid';
 import moment from 'moment';
 import { AxiosInstance } from 'axios';
 import { TableKeySet } from '../notional/types';
-import { UpdateData } from './types';
+import { UpdateData } from '../table/types';
 
 const NOTION_STAND_IN_NOTATION = '‣';
 
 export default class TransactionManager {
   constructor(
     private readonly axios: AxiosInstance,
-    private readonly keys: TableKeySet,
     private readonly userId: string,
+    private readonly keys?: TableKeySet,
   ) {}
 
   private formatToDateNode(dateNode: string | string[]) {
@@ -37,6 +37,8 @@ export default class TransactionManager {
   // TODO: Ensure all types are supported
   private formatToNotionTextNode(type: string, value: any) {
     switch (type) {
+      case 'pre-formatted':
+        return value;
       case 'url':
       case 'email':
       case 'phone_number':
@@ -100,7 +102,7 @@ export default class TransactionManager {
           path: [],
           command: 'update',
           args: {
-            parent_id: this.keys.collectionId,
+            parent_id: this.keys?.collectionId,
             parent_table: 'collection',
             alive: false,
           },
@@ -150,7 +152,7 @@ export default class TransactionManager {
           },
           {
             table: 'collection_view',
-            id: this.keys.collectionViewId,
+            id: this.keys?.collectionViewId,
             path: ['page_sort'],
             command: 'listAfter',
             args: {
@@ -163,7 +165,7 @@ export default class TransactionManager {
             path: [],
             command: 'update',
             args: {
-              parent_id: this.keys.collectionId,
+              parent_id: this.keys?.collectionId,
               parent_table: 'collection',
               alive: true,
             },

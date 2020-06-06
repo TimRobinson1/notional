@@ -10,7 +10,7 @@ import {
   UserModifiers,
 } from '../notional/types';
 import { AxiosInstance } from 'axios';
-import TransactionManager from './transaction-manager';
+import TransactionManager from '../transaction-manager';
 
 export default class Table {
   transactionManager: TransactionManager;
@@ -25,8 +25,8 @@ export default class Table {
   ) {
     this.transactionManager = new TransactionManager(
       this.axios,
-      this.keys,
       this.userId,
+      this.keys,
     );
     this.queryCaching = false;
     this.cachedQueryData = null;

@@ -7,6 +7,7 @@ import {
 } from './types';
 import { URL } from 'url';
 import Table from '../table';
+import Block from '../block';
 
 export default class Notional {
   private apiKey: string;
@@ -144,8 +145,13 @@ export default class Notional {
 
     const table = new Table(tableKeys, this.http, this.userId);
 
+    // Load table schema
     await table.getCollectionSchema();
 
     return table;
+  }
+
+  public block(blockId: string) {
+    return new Block(blockId, this.http, this.userId);
   }
 }
