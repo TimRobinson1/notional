@@ -99,27 +99,6 @@ export default class Table {
     }
   }
 
-  // Currently only supports simple AND filter objects
-  private async formatFilters(filters: object): Promise<any> {
-    const schema = await this.getCollectionSchema();
-    const formattedFilters = Object.entries(filters).map(([key, value]) => ({
-      // @ts-ignore
-      property: schema[key],
-      filter: {
-        operator: 'string_is',
-        value: {
-          type: 'exact',
-          value,
-        },
-      },
-    }));
-
-    return {
-      filters: formattedFilters,
-      operator: 'and',
-    };
-  }
-
   private async queryCollection({
     collectionId,
     collectionViewId,
@@ -151,6 +130,79 @@ export default class Table {
     }
 
     return response.data;
+  }
+
+  private async getFilteredBlockData(
+    filters: object,
+    additionalData: object = {},
+  ) {
+    const { result, recordMap } = await this.queryCollection(this.keys);
+    const blocks = result.blockIds.map((id: string) => recordMap.block[id]);
+    const schema = get(
+      recordMap,
+      `collection.${this.keys.collectionId}.value.schema`,
+      {},
+    );
+
+    const rowData = blocks.map((block: any) => {
+      if (block.value.properties) {
+        return {
+          block_id: block.value.id,
+          block_data: block.value.properties,
+        };
+      }
+    });
+
+    const filterKeys = Object.keys(filters);
+
+    return rowData
+      .map((row: any) => {
+        let filterOutRow = true;
+
+        const formattedData = Object.entries(schema).reduce(
+          (data, [key, headingData]: any) => {
+            let value;
+            if (!row || !row.block_data || !row.block_data[key]) {
+              value = this.getDefaultValueForType(headingData.type);
+            } else {
+              value = this.formatRawDataToType(
+                row.block_data[key],
+                headingData.type,
+              );
+            }
+
+            if (
+              filterKeys.includes(headingData.name) &&
+              // @ts-ignore
+              filters[headingData.name] === value
+            ) {
+              filterOutRow = false;
+            }
+
+            // @ts-ignore
+            const newValue = additionalData[headingData.name];
+
+            data = data.concat({
+              // @ts-ignore
+              id: key,
+              name: headingData.name,
+              type: headingData.type,
+              value: newValue !== undefined ? newValue : value,
+            });
+
+            return data;
+          },
+          [],
+        );
+
+        if (filterOutRow) {
+          return;
+        }
+
+        // @ts-ignore
+        return { id: row.block_id, data: formattedData };
+      })
+      .filter(Boolean);
   }
 
   public async getCollectionSchema() {
@@ -244,78 +296,29 @@ export default class Table {
     return this.transactionManager.insert(entriesToInsert);
   }
 
-  public async updateRows(updateData: object, filters: object) {
+  public async updateRows(dataToUpdate: object, filters: object = {}) {
     this.setQueryCaching(true);
-
-    const { result, recordMap } = await this.queryCollection(this.keys);
-    const blocks = result.blockIds.map((id: string) => recordMap.block[id]);
-    const schema = get(
-      recordMap,
-      `collection.${this.keys.collectionId}.value.schema`,
-      {},
-    );
-
-    const rowData = blocks.map((block: any) => {
-      if (block.value.properties) {
-        return {
-          block_id: block.value.id,
-          block_data: block.value.properties,
-        };
-      }
-    });
-
-    const filterKeys = Object.keys(filters);
-    const data = rowData
-      .map((row: any) => {
-        let filterOutRow = true;
-
-        const formattedData = Object.entries(schema).reduce(
-          (data, [key, headingData]: any) => {
-            let value;
-            if (!row || !row.block_data || !row.block_data[key]) {
-              value = this.getDefaultValueForType(headingData.type);
-            } else {
-              value = this.formatRawDataToType(
-                row.block_data[key],
-                headingData.type,
-              );
-            }
-
-            if (
-              filterKeys.includes(headingData.name) &&
-              // @ts-ignore
-              filters[headingData.name] === value
-            ) {
-              filterOutRow = false;
-            }
-
-            data = data.concat({
-              // @ts-ignore
-              id: key,
-              name: headingData.name,
-              type: headingData.type,
-              // @ts-ignore
-              value: updateData[headingData.name] || value,
-            });
-
-            return data;
-          },
-          [],
-        );
-
-        if (filterOutRow) {
-          return;
-        }
-
-        // @ts-ignore
-        return { id: row.block_id, data: formattedData };
-      })
-      .filter(Boolean);
-
-    const update = await this.transactionManager.update(data);
-
+    const data = await this.getFilteredBlockData(filters, dataToUpdate);
     this.setQueryCaching(false);
 
-    return update;
+    if (!data.length) {
+      return [];
+    }
+
+    return await this.transactionManager.update(data);
+  }
+
+  public async deleteRows(filters: object = {}) {
+    this.setQueryCaching(true);
+    const data = await this.getFilteredBlockData(filters);
+    this.setQueryCaching(false);
+
+    if (!data.length) {
+      return [];
+    }
+
+    return await this.transactionManager.delete(
+      data.map((block: any) => block.id),
+    );
   }
 }

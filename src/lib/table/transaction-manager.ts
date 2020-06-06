@@ -57,6 +57,13 @@ export default class TransactionManager {
     }
   }
 
+  private submitTransaction(transactions: any[]) {
+    return this.axios.post('submitTransaction', {
+      requestId: uuid(),
+      transactions,
+    });
+  }
+
   public async update(insertionData: UpdateData[]) {
     const now = new Date().getTime();
     const transactions = insertionData.map(({ id, data }) => ({
@@ -79,10 +86,36 @@ export default class TransactionManager {
       ],
     }));
 
-    return await this.axios.post('submitTransaction', {
-      requestId: uuid(),
-      transactions,
-    });
+    return await this.submitTransaction(transactions);
+  }
+
+  public async delete(blockIds: string[]) {
+    const now = new Date().getTime();
+    const transactions = blockIds.map(id => ({
+      id: uuid(),
+      operations: [
+        {
+          id,
+          table: 'block',
+          path: [],
+          command: 'update',
+          args: {
+            parent_id: this.keys.collectionId,
+            parent_table: 'collection',
+            alive: false,
+          },
+        },
+        {
+          id,
+          table: 'block',
+          path: ['last_edited_time'],
+          command: 'set',
+          args: now,
+        },
+      ],
+    }));
+
+    return await this.submitTransaction(transactions);
   }
 
   public async insert(data: object[][]) {
@@ -100,89 +133,88 @@ export default class TransactionManager {
       })),
     }));
 
-    return await this.axios.post('submitTransaction', {
-      requestId: uuid(),
-      transactions: [
-        {
-          id: uuid(),
-          operations: [
-            {
+    const transactions = [
+      {
+        id: uuid(),
+        operations: [
+          {
+            id: newBlockId,
+            table: 'block',
+            path: [],
+            command: 'set',
+            args: {
+              type: 'page',
               id: newBlockId,
-              table: 'block',
-              path: [],
-              command: 'set',
-              args: {
-                type: 'page',
-                id: newBlockId,
-                version: 1,
-              },
+              version: 1,
             },
-            {
-              table: 'collection_view',
-              id: this.keys.collectionViewId,
-              path: ['page_sort'],
-              command: 'listAfter',
-              args: {
-                id: newBlockId,
-              },
-            },
-            {
+          },
+          {
+            table: 'collection_view',
+            id: this.keys.collectionViewId,
+            path: ['page_sort'],
+            command: 'listAfter',
+            args: {
               id: newBlockId,
-              table: 'block',
-              path: [],
-              command: 'update',
-              args: {
-                parent_id: this.keys.collectionId,
-                parent_table: 'collection',
-                alive: true,
-              },
             },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['created_by_id'],
-              command: 'set',
-              args: this.userId,
+          },
+          {
+            id: newBlockId,
+            table: 'block',
+            path: [],
+            command: 'update',
+            args: {
+              parent_id: this.keys.collectionId,
+              parent_table: 'collection',
+              alive: true,
             },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['created_by_table'],
-              command: 'set',
-              args: 'notion_user',
-            },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['created_time'],
-              command: 'set',
-              args: now,
-            },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['last_edited_time'],
-              command: 'set',
-              args: now,
-            },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['last_edited_by_id'],
-              command: 'set',
-              args: this.userId,
-            },
-            {
-              table: 'block',
-              id: newBlockId,
-              path: ['last_edited_by_table'],
-              command: 'set',
-              args: 'notion_user',
-            },
-          ],
-        },
-        ...dataToInsert,
-      ],
-    });
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['created_by_id'],
+            command: 'set',
+            args: this.userId,
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['created_by_table'],
+            command: 'set',
+            args: 'notion_user',
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['created_time'],
+            command: 'set',
+            args: now,
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['last_edited_time'],
+            command: 'set',
+            args: now,
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['last_edited_by_id'],
+            command: 'set',
+            args: this.userId,
+          },
+          {
+            table: 'block',
+            id: newBlockId,
+            path: ['last_edited_by_table'],
+            command: 'set',
+            args: 'notion_user',
+          },
+        ],
+      },
+      ...dataToInsert,
+    ];
+
+    return await this.submitTransaction(transactions);
   }
 }
