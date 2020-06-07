@@ -1,7 +1,7 @@
 {
   "name": "notional",
-  "version": "0.0.1",
-  "description": "An unofficial Notion client",
+  "version": "0.1.0",
+  "description": "An unofficial Notion API for interacting with table data in NodeJS",
   "main": "index.js",
   "scripts": {
     "test": "jest",
