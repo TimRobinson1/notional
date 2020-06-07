@@ -1,6 +1,6 @@
 import axios from 'axios';
 import examplePageChunkData from './example-page-chunk-data.json';
-import Notional from '..';
+import { Notional } from '..';
 import Table from '../../table';
 
 jest.mock('axios');
