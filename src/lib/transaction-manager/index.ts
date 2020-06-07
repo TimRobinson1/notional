@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import moment from 'moment';
 import { AxiosInstance } from 'axios';
-import { TableKeySet } from '../notional/types';
+import { TableKeySet, UserTextNode } from '../notional/types';
 import { UpdateData } from '../table/types';
 
 const NOTION_STAND_IN_NOTATION = '‣';
@@ -40,7 +40,7 @@ export default class TransactionManager {
       return [[NOTION_STAND_IN_NOTATION, [['u', value]]]];
     }
 
-    const users = [] as any[];
+    const users = [] as UserTextNode[];
 
     value.forEach((userId, index) => {
       users.push([NOTION_STAND_IN_NOTATION, [['u', userId]]]);
@@ -53,7 +53,7 @@ export default class TransactionManager {
     return users;
   }
 
-  private formatToNotionTextNode(type: string, value: any) {
+  private formatToNotionTextNode(type: string, value: string | string[]) {
     switch (type) {
       case 'pre-formatted':
         return value;
@@ -67,7 +67,7 @@ export default class TransactionManager {
           [NOTION_STAND_IN_NOTATION, [['d', this.formatToDateNode(value)]]],
         ];
       case 'multi_select':
-        return [[value.join(',')]];
+        return [[(value as string[]).join(',')]];
       case 'user':
       case 'person':
         return this.formatUserType(value);

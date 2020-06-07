@@ -25,6 +25,8 @@ export type Config = {
   cache?: TableKeyCache;
 };
 
+export type KeyValues = Record<string, string>;
+
 type BaseValue = {
   id: string;
   version: number;
@@ -45,6 +47,15 @@ export type UserModifiers = [['u', string]];
 export type TextNodeModifiers = string[][] | DateModifiers | UserModifiers;
 
 export type TextNode = [string, TextNodeModifiers?];
+
+export type UserTextNode = [string, [[string, string]]] | string[];
+
+export type FormattedData = {
+  id: string;
+  name: string;
+  type: BlockType;
+  value: string | string[];
+};
 
 export type NotionPostData = {
   pageId?: string;
@@ -75,6 +86,8 @@ export type BlockType =
   | 'date'
   | 'code'
   | 'datetime'
+  | 'user'
+  | 'person'
   | 'collection_view';
 
 export type PluralBlockType = 'tables';
@@ -83,10 +96,7 @@ export type PageBlock = {
   role: Role;
   value: BaseValue & {
     type: BlockType;
-    properties: {
-      title: TextNode[];
-      checked?: TextNode[];
-    };
+    properties: Record<string, TextNode[]>;
     content: string[];
     format: {
       page_icon: string;
@@ -129,6 +139,10 @@ export type PermissionGroup = {
   id: string;
   name: string;
   user_ids: string[];
+};
+
+export type UserRecordsToFetch = {
+  [key: string]: -1;
 };
 
 export type Space = {
@@ -180,6 +194,7 @@ export type Comment = {
 };
 
 export type BaseSchemaCell = {
+  id: string;
   name: string;
   type: string;
 };
@@ -203,11 +218,13 @@ export type CollectionPageProperties = {
   property: string;
 };
 
+export type Schema = Record<string, SchemaCell>;
+
 export type Collection = {
   role: Role;
   value: BaseValue & {
     name: TextNode[];
-    schema: Record<string, SchemaCell>;
+    schema: Schema;
     format: {
       collection_page_properties: CollectionPageProperties[];
     };
