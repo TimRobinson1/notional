@@ -7,6 +7,17 @@ export type TableKeyCache = {
   [tableIdentifier: string]: TableKeySet;
 };
 
+export type TableOptions = {
+  getUsers?: boolean;
+  getCollectionSchema?: boolean;
+};
+
+export type UserCache = {
+  id: string;
+  firstname: string;
+  lastname: string;
+};
+
 export type Config = {
   apiKey: string;
   userId: string;

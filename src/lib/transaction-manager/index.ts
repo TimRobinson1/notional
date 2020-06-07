@@ -5,6 +5,7 @@ import { TableKeySet } from '../notional/types';
 import { UpdateData } from '../table/types';
 
 const NOTION_STAND_IN_NOTATION = '‣';
+const NOTION_LIST_SEPARATOR = [','];
 
 export default class TransactionManager {
   constructor(
@@ -19,7 +20,7 @@ export default class TransactionManager {
       const endDate = moment(dateNode[1]);
 
       return {
-        type: 'daterange',
+        type: 'datetimerange',
         start_date: startDate.format('YYYY-MM-DD'),
         start_time: startDate.format('HH:mm'),
         end_date: endDate.format('YYYY-MM-DD'),
@@ -34,7 +35,24 @@ export default class TransactionManager {
     };
   }
 
-  // TODO: Ensure all types are supported
+  private formatUserType(value: string | string[]) {
+    if (!Array.isArray(value)) {
+      return [[NOTION_STAND_IN_NOTATION, [['u', value]]]];
+    }
+
+    const users = [] as any[];
+
+    value.forEach((userId, index) => {
+      users.push([NOTION_STAND_IN_NOTATION, [['u', userId]]]);
+
+      if (index !== value.length - 1) {
+        users.push(NOTION_LIST_SEPARATOR);
+      }
+    });
+
+    return users;
+  }
+
   private formatToNotionTextNode(type: string, value: any) {
     switch (type) {
       case 'pre-formatted':
@@ -51,7 +69,8 @@ export default class TransactionManager {
       case 'multi_select':
         return [[value.join(',')]];
       case 'user':
-        return [[NOTION_STAND_IN_NOTATION, ['u', value]]];
+      case 'person':
+        return this.formatUserType(value);
       case 'checkbox':
         return value ? [['Yes']] : null;
       default:

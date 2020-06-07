@@ -4,6 +4,7 @@ import {
   TableKeyCache,
   NotionPageChunkResponse,
   TableKeySet,
+  TableOptions,
 } from './types';
 import { URL } from 'url';
 import Table from '../table';
@@ -130,7 +131,12 @@ export class Notional {
     return tableKeys;
   }
 
-  public async table(tableUrlOrKeySet: string | TableKeySet) {
+  public async table(
+    tableUrlOrKeySet: string | TableKeySet,
+    options: TableOptions = {},
+  ) {
+    const { getUsers = true, getCollectionSchema = true } = options;
+
     let tableKeys: TableKeySet;
 
     if (typeof tableUrlOrKeySet === 'string') {
@@ -141,8 +147,15 @@ export class Notional {
 
     const table = new Table(tableKeys, this.http, this.userId);
 
-    // Load table schema
-    await table.getCollectionSchema();
+    if (getCollectionSchema) {
+      // Load table schema
+      await table.getCollectionSchema();
+    }
+
+    if (getUsers) {
+      // Load users
+      await table.getUsers();
+    }
 
     return table;
   }

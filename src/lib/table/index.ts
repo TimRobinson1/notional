@@ -8,6 +8,8 @@ import {
   DateModifiers,
   TextNodeModifiers,
   UserModifiers,
+  User,
+  UserCache,
 } from '../notional/types';
 import { AxiosInstance } from 'axios';
 import TransactionManager from '../transaction-manager';
@@ -17,6 +19,7 @@ export default class Table {
   queryCaching: boolean;
   cachedQueryData: object | null;
   schema: object | null;
+  users: UserCache[] | null;
 
   constructor(
     private readonly keys: TableKeySet,
@@ -31,6 +34,7 @@ export default class Table {
     this.queryCaching = false;
     this.cachedQueryData = null;
     this.schema = null;
+    this.users = null;
   }
 
   private setQueryCaching(caching: boolean) {
@@ -132,9 +136,25 @@ export default class Table {
     return response.data;
   }
 
+  private formatToUserId(value: string) {
+    if (!this.users) {
+      return value;
+    }
+
+    const user = this.users.find(
+      user =>
+        user.id === value ||
+        `${user.firstname} ${user.lastname}`.toLowerCase() ===
+          value.toLowerCase(),
+    );
+
+    return user?.id || value;
+  }
+
   private async getFilteredBlockData(
     filters: object,
     additionalData: object = {},
+    filterByAdditionalData = false,
   ) {
     const { result, recordMap } = await this.queryCollection(this.keys);
     const blocks = result.blockIds.map((id: string) => recordMap.block[id]);
@@ -180,15 +200,22 @@ export default class Table {
             }
 
             // @ts-ignore
-            const newValue = additionalData[headingData.name];
+            let newValue = additionalData[headingData.name];
 
-            data = data.concat({
+            if (['user', 'person'].includes(headingData.type)) {
               // @ts-ignore
-              id: key,
-              name: headingData.name,
-              type: headingData.type,
-              value: newValue !== undefined ? newValue : value,
-            });
+              newValue = this.formatToUserId(additionalData[headingData.name]);
+            }
+
+            if (!(filterByAdditionalData && !newValue)) {
+              data = data.concat({
+                // @ts-ignore
+                id: key,
+                name: headingData.name,
+                type: headingData.type,
+                value: newValue !== undefined ? newValue : value,
+              });
+            }
 
             return data;
           },
@@ -203,6 +230,42 @@ export default class Table {
         return { id: row.block_id, data: formattedData };
       })
       .filter(Boolean);
+  }
+
+  public async getUsers() {
+    if (this.users && this.users.length) {
+      return Promise.resolve(this.users);
+    }
+
+    const response = await this.axios.post('loadUserContent', {});
+    const notionSpaces = Object.values(response?.data?.recordMap?.space || {});
+
+    const groupedUserIds = notionSpaces.map((space: any) =>
+      (space?.value?.permissions || []).map(
+        (permission: any) => permission.user_id,
+      ),
+    );
+
+    const userIds = Array.from(new Set<any>([].concat(...groupedUserIds)));
+
+    const userRecordsResponse = await this.axios.post('syncRecordValues', {
+      recordVersionMap: {
+        notion_user: userIds.reduce((block, id) => {
+          block[id] = -1;
+
+          return block;
+        }, {}),
+      },
+    });
+
+    const notionUsers = userRecordsResponse?.data?.recordMap?.notion_user;
+    this.users = Object.values(notionUsers || {}).map((userRecord: any) => ({
+      id: userRecord.value.id,
+      firstname: userRecord.value.given_name,
+      lastname: userRecord.value.family_name,
+    }));
+
+    return this.users;
   }
 
   public async getCollectionSchema() {
@@ -298,13 +361,14 @@ export default class Table {
 
   public async updateRows(dataToUpdate: object, filters: object = {}) {
     this.setQueryCaching(true);
-    const data = await this.getFilteredBlockData(filters, dataToUpdate);
+    const data = await this.getFilteredBlockData(filters, dataToUpdate, true);
     this.setQueryCaching(false);
 
     if (!data.length) {
       return [];
     }
 
+    console.log('DATA!!!!', JSON.stringify(data, null, 2));
     return await this.transactionManager.update(data);
   }
 
