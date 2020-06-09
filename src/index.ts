@@ -1,1 +1,1 @@
-export * from './lib/notional';
+export { default, Notional } from './lib/notional';
