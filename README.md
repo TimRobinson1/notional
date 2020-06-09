@@ -31,7 +31,7 @@ Let's say we have a table in Notion to keep track of our video games:
 <img src="https://i.ibb.co/JHtRPFQ/Screenshot-2020-06-09-at-2-45-09-am.png" />
 
 #### Reading from the table
-Nice. Let's connect to that table in our code using `notional`, and read from our table all of the Switch games that we have in our collection:
+Nice. Let's connect to that table in our code using `notional`, and read from our table all of the PC games that we have in our collection:
 
 ```javascript
 import notional from 'notional';
