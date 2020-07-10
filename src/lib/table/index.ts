@@ -15,10 +15,18 @@ import {
   UserList,
   KeyValues,
   FormattedData,
+  PageBlock,
 } from '../notional/types';
 import { AxiosInstance } from 'axios';
 import TransactionManager from '../transaction-manager';
 import { UpdateData } from './types';
+
+const METADATA_TYPES = [
+  'created_by',
+  'created_time',
+  'last_edited_by',
+  'last_edited_time',
+];
 
 export default class Table {
   transactionManager: TransactionManager;
@@ -102,6 +110,31 @@ export default class Table {
         return [];
       case 'checkbox':
         return false;
+      default:
+        return null;
+    }
+  }
+
+  private useBlockValueForType(
+    type: string,
+    data: Omit<PageBlock['value'], 'properties'>,
+  ) {
+    const {
+      last_edited_by_id: lastEdited,
+      last_edited_time: lastTimeEdited,
+      created_by_id: createdBy,
+      created_time: timeCreated,
+    } = data;
+
+    switch (type) {
+      case 'last_edited_by':
+        return lastEdited;
+      case 'last_edited_time':
+        return lastTimeEdited ? new Date(lastTimeEdited).toISOString() : null;
+      case 'created_by':
+        return createdBy;
+      case 'created_time':
+        return timeCreated ? new Date(timeCreated).toISOString() : null;
       default:
         return null;
     }
@@ -207,7 +240,9 @@ export default class Table {
             let newValue = additionalData[headingData.name];
 
             if (['user', 'person'].includes(headingData.type)) {
-              newValue = this.formatToUserId(additionalData[headingData.name]);
+              newValue = this.formatToUserId(
+                additionalData[headingData.name] as string,
+              );
             }
 
             if (!(filterByAdditionalData && !newValue)) {
@@ -288,7 +323,7 @@ export default class Table {
       const { name, ...rest } = rawSchema[key];
 
       if (name !== undefined && name !== null) {
-        obj[name] = { id: key, ...rest };
+        obj[name] = { ...rest, id: key };
       }
 
       return obj;
@@ -311,24 +346,32 @@ export default class Table {
       `collection.${this.keys.collectionId}.value.schema`,
       {},
     ) as Schema;
-    const rowData = blocks.map(block => block.value.properties);
 
-    const data = rowData.map(row => {
-      return Object.entries(schema).reduce((data, [key, headingData]) => {
-        if (!row || !row[key]) {
-          data[headingData.name] = this.getDefaultValueForType(
-            headingData.type,
-          );
-        } else {
-          data[headingData.name] = this.formatRawDataToType(
-            row[key],
-            headingData.type,
-          );
-        }
+    const data = blocks.map(
+      ({ value: { properties: row, ...additionalProperties } }) => {
+        return Object.entries(schema).reduce((data, [key, headingData]) => {
+          if (!row || !row[key]) {
+            data[headingData.name] = this.getDefaultValueForType(
+              headingData.type,
+            );
+          } else {
+            data[headingData.name] = this.formatRawDataToType(
+              row[key],
+              headingData.type,
+            );
+          }
 
-        return data;
-      }, {} as Record<string, any>);
-    });
+          if (METADATA_TYPES.includes(headingData.type)) {
+            data[headingData.name] = this.useBlockValueForType(
+              headingData.type,
+              additionalProperties,
+            );
+          }
+
+          return data;
+        }, {} as Record<string, any>);
+      },
+    );
 
     return filter(data, filters);
   }
