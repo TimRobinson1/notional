@@ -9,6 +9,7 @@ _Notional: Existing as or based on a suggestion, estimate, or theory_ -- <a href
 ---
 
 ## Basic Usage
+Notional is still very much a work in progress, so please use with a degree of caution.
 
 ### Installation
 ```
