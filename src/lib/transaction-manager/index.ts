@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import moment from 'moment';
+import flatten from 'lodash/flatten';
 import { AxiosInstance } from 'axios';
 import { TableKeySet, UserTextNode } from '../notional/types';
 import { UpdateData } from '../table/types';
@@ -140,13 +141,13 @@ export default class TransactionManager {
   }
 
   public async insert(data: object[][]) {
-    const newBlockId = uuid();
     const now = new Date().getTime();
 
-    const dataToInsert = data.map(row => ({
+    const newBlockIds = data.map(_ => uuid());
+    const dataToInsert = data.map((row, index) => ({
       id: uuid(),
       operations: row.map((entry: any) => ({
-        id: newBlockId,
+        id: newBlockIds[index],
         table: 'block',
         path: ['properties', entry.id],
         command: 'set',
@@ -157,81 +158,83 @@ export default class TransactionManager {
     const transactions = [
       {
         id: uuid(),
-        operations: [
-          {
-            id: newBlockId,
-            table: 'block',
-            path: [],
-            command: 'set',
-            args: {
-              type: 'page',
+        operations: flatten(
+          newBlockIds.map(newBlockId => [
+            {
               id: newBlockId,
-              version: 1,
+              table: 'block',
+              path: [],
+              command: 'set',
+              args: {
+                type: 'page',
+                id: newBlockId,
+                version: 1,
+              },
             },
-          },
-          {
-            table: 'collection_view',
-            id: this.keys?.collectionViewId,
-            path: ['page_sort'],
-            command: 'listAfter',
-            args: {
+            {
+              table: 'collection_view',
+              id: this.keys?.collectionViewId,
+              path: ['page_sort'],
+              command: 'listAfter',
+              args: {
+                id: newBlockId,
+              },
+            },
+            {
               id: newBlockId,
+              table: 'block',
+              path: [],
+              command: 'update',
+              args: {
+                parent_id: this.keys?.collectionId,
+                parent_table: 'collection',
+                alive: true,
+              },
             },
-          },
-          {
-            id: newBlockId,
-            table: 'block',
-            path: [],
-            command: 'update',
-            args: {
-              parent_id: this.keys?.collectionId,
-              parent_table: 'collection',
-              alive: true,
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['created_by_id'],
+              command: 'set',
+              args: this.userId,
             },
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['created_by_id'],
-            command: 'set',
-            args: this.userId,
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['created_by_table'],
-            command: 'set',
-            args: 'notion_user',
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['created_time'],
-            command: 'set',
-            args: now,
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['last_edited_time'],
-            command: 'set',
-            args: now,
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['last_edited_by_id'],
-            command: 'set',
-            args: this.userId,
-          },
-          {
-            table: 'block',
-            id: newBlockId,
-            path: ['last_edited_by_table'],
-            command: 'set',
-            args: 'notion_user',
-          },
-        ],
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['created_by_table'],
+              command: 'set',
+              args: 'notion_user',
+            },
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['created_time'],
+              command: 'set',
+              args: now,
+            },
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['last_edited_time'],
+              command: 'set',
+              args: now,
+            },
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['last_edited_by_id'],
+              command: 'set',
+              args: this.userId,
+            },
+            {
+              table: 'block',
+              id: newBlockId,
+              path: ['last_edited_by_table'],
+              command: 'set',
+              args: 'notion_user',
+            },
+          ]),
+        ),
       },
       ...dataToInsert,
     ];
