@@ -25,7 +25,7 @@ export type Config = {
   cache?: TableKeyCache;
 };
 
-export type KeyValues = Record<string, string | string[]>;
+export type KeyValues = Record<string, string | string[] | Function>;
 
 type BaseValue = {
   id: string;

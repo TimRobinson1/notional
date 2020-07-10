@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import compact from 'lodash/compact';
-import filter from 'lodash/filter';
+import isEqual from 'lodash/isEqual';
 import {
   TableKeySet,
   TextNode,
@@ -373,7 +373,22 @@ export default class Table {
       },
     );
 
-    return filter(data, filters);
+    return data.filter(row => {
+      const filterKeys = Object.keys(filters);
+      const applicableFilterKeys = Object.keys(row).filter(key =>
+        filterKeys.includes(key),
+      );
+
+      return applicableFilterKeys.every(filterKey => {
+        const filter = (filters as any)[filterKey];
+
+        if (typeof filter === 'function') {
+          return filter(row[filterKey]);
+        } else {
+          return isEqual(filter, row[filterKey]);
+        }
+      });
+    });
   }
 
   public async insertRows(data: object[]) {
