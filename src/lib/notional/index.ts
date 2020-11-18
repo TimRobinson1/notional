@@ -6,9 +6,9 @@ import {
   TableKeySet,
   TableOptions,
 } from './types';
-import Block from '../block';
 import { URL } from 'url';
 import Table from '../table';
+import Block from '../block';
 
 export class Notional {
   private userId: string;
