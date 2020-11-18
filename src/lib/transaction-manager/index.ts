@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import moment from 'moment';
 import flatten from 'lodash/flatten';
 import { AxiosInstance } from 'axios';
-import { TableKeySet, UserTextNode } from '../notional/types';
+import { Schema, TableKeySet, UserTextNode } from '../notional/types';
 import { UpdateData } from '../table/types';
 
 const NOTION_STAND_IN_NOTATION = '‣';
@@ -137,6 +137,26 @@ export default class TransactionManager {
       ],
     }));
 
+    return await this.submitTransaction(transactions);
+  }
+
+  public async setSchema(schema: Schema) {
+
+    const now = new Date().getTime();
+    const transactions = [{
+      id: uuid(),
+      operations: [
+        {
+          id: this.keys?.collectionId,
+          table: 'collection',
+          path: [],
+          command: 'update',
+          args: {
+            schema
+          },
+        }
+      ]
+    }];
     return await this.submitTransaction(transactions);
   }
 
