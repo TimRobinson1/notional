@@ -228,8 +228,8 @@ export default class Table {
               );
             }
             if (
-              (filterKeys.includes(headingData.name) &&
-              filters[headingData.name] === value)
+              filterKeys.includes(headingData.name) &&
+              filters[headingData.name] === value
             ) {
               filterOutRow = false;
             }
