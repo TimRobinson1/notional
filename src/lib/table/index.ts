@@ -204,24 +204,22 @@ export default class Table {
     ) as Schema;
 
     const rowData = blocks.map(block => {
-      if (block.value.properties) {
-        return {
-          block_id: block.value.id,
-          block_data: block.value.properties,
-        };
-      }
+      return {
+        block_id: block.value.id,
+        block_data: block.value.properties,
+      };
     });
 
     const filterKeys = Object.keys(filters);
 
     return rowData
       .map(row => {
-        let filterOutRow = true;
+        let filterOutRow = (filterKeys.length > 0) ? true : false;
 
         const formattedData = Object.entries(schema).reduce(
           (data, [key, headingData]) => {
             let value;
-            if (!row || !row.block_data || !row.block_data[key]) {
+            if (!row.block_data || !row.block_data[key]) {
               value = this.getDefaultValueForType(headingData.type);
             } else {
               value = this.formatRawDataToType(
@@ -229,10 +227,9 @@ export default class Table {
                 headingData.type,
               );
             }
-
             if (
-              filterKeys.includes(headingData.name) &&
-              filters[headingData.name] === value
+              (filterKeys.includes(headingData.name) &&
+              filters[headingData.name] === value)
             ) {
               filterOutRow = false;
             }
