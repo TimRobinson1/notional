@@ -7,8 +7,8 @@ import {
   TableOptions,
 } from './types';
 import Block from '../block';
-import Table from '../table';
 import { URL } from 'url';
+import Table from '../table';
 
 export class Notional {
   private userId: string;
