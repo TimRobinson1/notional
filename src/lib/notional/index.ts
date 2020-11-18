@@ -6,9 +6,9 @@ import {
   TableKeySet,
   TableOptions,
 } from './types';
-import { URL } from 'url';
-import Table from '../table';
 import Block from '../block';
+import Table from '../table';
+import { URL } from 'url';
 
 export class Notional {
   private userId: string;
@@ -112,7 +112,7 @@ export class Notional {
     );
 
     const tableKeys = Object.values(recordMap.block)
-      .filter(block => block.value && block.value.type === 'collection_view')
+      .filter(block => block.value && (block.value.type === 'collection_view' || block.value.type === 'collection_view_page'))
       .reduce((keyObject: TableKeyCache, collection) => {
         const collectionId = collection.value.collection_id;
         const tableUrl = `${baseUrl}/${collectionId}`;
