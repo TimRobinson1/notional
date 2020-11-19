@@ -194,7 +194,7 @@ export type Comment = {
 };
 
 export type BaseSchemaCell = {
-  id: string;
+  id?: string;
   name: string;
   type: string;
 };
