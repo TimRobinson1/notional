@@ -2,6 +2,7 @@ import get from 'lodash/get';
 import compact from 'lodash/compact';
 import crypto from 'crypto';
 import isEqual from 'lodash/isEqual';
+import { v4 as uuid } from 'uuid';
 import {
   TableKeySet,
   TextNode,
@@ -17,6 +18,7 @@ import {
   KeyValues,
   FormattedData,
   PageBlock,
+  MultiSelectOption,
 } from '../notional/types';
 import { AxiosInstance } from 'axios';
 import TransactionManager from '../transaction-manager';
@@ -458,7 +460,7 @@ export default class Table {
   public async updateColumns(
     schema: Record<
       string,
-      { id?: string; type: 'text' | 'title' | 'multi_select' }
+      { id?: string; options?: Partial<MultiSelectOption>[]; type: string }
     >,
   ) {
     const collectionBlocks = await this.queryCollection(this.keys);
@@ -485,6 +487,20 @@ export default class Table {
             : crypto.randomFillSync(Buffer.alloc(2)).toString('hex');
         }
         newSchema[id] = { name: key, type: headingData.type };
+        if (headingData.options) {
+          newSchema[id].options = headingData.options.reduce<
+            MultiSelectOption[]
+          >((options, option) => {
+            const id = option.id || uuid();
+            const previous = options.find(
+              previous => previous.id === id || previous.value === option.value,
+            );
+            if (!previous) {
+              options.push({ id, value: option.value!, color: option.color! });
+            }
+            return options;
+          }, newSchema[id].options || []);
+        }
         return newSchema;
       },
       rawSchema,
