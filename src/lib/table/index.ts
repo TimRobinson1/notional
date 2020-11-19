@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import compact from 'lodash/compact';
+import crypto from 'crypto';
 import isEqual from 'lodash/isEqual';
 import {
   TableKeySet,
@@ -454,8 +455,12 @@ export default class Table {
 
   // Make sure to leave existing columns in case they hold data
   // If an id is provided, this method will rename the existing column
-  public async updateColumns(schema: Record<string, { id?: string, type: 'text' | 'title' | 'multi_select' }>) {
-
+  public async updateColumns(
+    schema: Record<
+      string,
+      { id?: string; type: 'text' | 'title' | 'multi_select' }
+    >,
+  ) {
     const collectionBlocks = await this.queryCollection(this.keys);
 
     const rawSchema = get(
@@ -464,22 +469,26 @@ export default class Table {
       {},
     ) as Schema;
 
-    const newSchema = Object.entries(schema)
-      .reduce<Schema>((newSchema, [key, headingData]) => {
+    const newSchema = Object.entries(schema).reduce<Schema>(
+      (newSchema, [key, headingData]) => {
         let id: string;
         if (headingData.type === 'title') {
           id = 'title';
-        }
-        else if (headingData.id) {
+        } else if (headingData.id) {
           id = headingData.id;
-        }
-        else {
-          const existing = Object.entries(rawSchema).find(([id, cell]) => cell.name === key);
-          id = existing ? existing[0] : crypto.randomFillSync(Buffer.alloc(2)).toString('hex');
+        } else {
+          const existing = Object.entries(rawSchema).find(
+            ([id, cell]) => cell.name === key,
+          );
+          id = existing
+            ? existing[0]
+            : crypto.randomFillSync(Buffer.alloc(2)).toString('hex');
         }
         newSchema[id] = { name: key, type: headingData.type };
         return newSchema;
-      }, rawSchema);
+      },
+      rawSchema,
+    );
 
     return await this.transactionManager.setSchema(newSchema);
   }

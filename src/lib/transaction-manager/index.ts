@@ -141,22 +141,23 @@ export default class TransactionManager {
   }
 
   public async setSchema(schema: Schema) {
-
-    const now = new Date().getTime();
-    const transactions = [{
-      id: uuid(),
-      operations: [
-        {
-          id: this.keys?.collectionId,
-          table: 'collection',
-          path: [],
-          command: 'update',
-          args: {
-            schema
+    const transactions = [
+      {
+        id: uuid(),
+        operations: [
+          {
+            id: this.keys?.collectionId,
+            table: 'collection',
+            path: [],
+            command: 'update',
+            args: {
+              schema,
+            },
           },
-        }
-      ]
-    }];
+        ],
+      },
+    ];
+
     return await this.submitTransaction(transactions);
   }
 
