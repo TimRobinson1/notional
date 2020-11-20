@@ -506,6 +506,8 @@ export default class Table {
       rawSchema,
     );
 
-    return await this.transactionManager.setSchema(newSchema);
+    await this.transactionManager.setSchema(newSchema);
+
+    this.schema = null;
   }
 }
