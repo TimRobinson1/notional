@@ -13,9 +13,11 @@ export type TableOptions = {
 };
 
 export type UserCache = {
+  email: string;
   id: string;
   firstname: string;
   lastname: string;
+  photo: string;
 };
 
 export type Config = {
