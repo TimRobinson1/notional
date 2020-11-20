@@ -298,9 +298,11 @@ export default class Table {
     const notionUsers = userRecordsResponse?.data?.recordMap
       ?.notion_user as UserList;
     this.users = Object.values(notionUsers || {}).map(userRecord => ({
+      email: userRecord.value.email,
       id: userRecord.value.id,
       firstname: userRecord.value.given_name,
       lastname: userRecord.value.family_name,
+      photo: userRecord.value.profile_photo
     }));
 
     return this.users;
