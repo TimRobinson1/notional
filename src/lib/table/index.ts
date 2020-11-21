@@ -349,27 +349,30 @@ export default class Table {
 
     const data = blocks.map(
       ({ value: { properties: row, ...additionalProperties } }) => {
-        return Object.entries(schema).reduce((data, [key, headingData]) => {
-          if (!row || !row[key]) {
-            data[headingData.name] = this.getDefaultValueForType(
-              headingData.type,
-            );
-          } else {
-            data[headingData.name] = this.formatRawDataToType(
-              row[key],
-              headingData.type,
-            );
-          }
+        return Object.entries(schema).reduce(
+          (data, [key, headingData]) => {
+            if (!row || !row[key]) {
+              data[headingData.name] = this.getDefaultValueForType(
+                headingData.type,
+              );
+            } else {
+              data[headingData.name] = this.formatRawDataToType(
+                row[key],
+                headingData.type,
+              );
+            }
 
-          if (METADATA_TYPES.includes(headingData.type)) {
-            data[headingData.name] = this.useBlockValueForType(
-              headingData.type,
-              additionalProperties,
-            );
-          }
+            if (METADATA_TYPES.includes(headingData.type)) {
+              data[headingData.name] = this.useBlockValueForType(
+                headingData.type,
+                additionalProperties,
+              );
+            }
 
-          return data;
-        }, {} as Record<string, any>);
+            return data;
+          },
+          { id: additionalProperties.id } as Record<string, any>,
+        );
       },
     );
 
@@ -397,6 +400,14 @@ export default class Table {
       compact(
         Object.entries(datum).map(([key, value]) => {
           const schemaData = schemaMap[key];
+
+          if (key === 'id') {
+            return {
+              id: 'id',
+              type: 'id',
+              value,
+            };
+          }
 
           if (!schemaData) {
             console.warn(`Unrecognised key "${key}". Ignoring.`);
