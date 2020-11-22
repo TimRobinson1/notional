@@ -460,7 +460,14 @@ export default class Table {
   public async updateColumns(
     schema: Record<
       string,
-      { id?: string; options?: Partial<MultiSelectOption>[]; type: string }
+      {
+        id?: string;
+        options?: (Omit<MultiSelectOption, 'color' | 'id'> & {
+          color?: string;
+          id?: string;
+        })[];
+        type: string;
+      }
     >,
   ) {
     const collectionBlocks = await this.queryCollection(this.keys);
@@ -470,6 +477,19 @@ export default class Table {
       `recordMap.collection.${this.keys.collectionId}.value.schema`,
       {},
     ) as Schema;
+
+    const rawHash = Object.entries(rawSchema)
+      .map(([id, fields]) => fields.name + fields.options?.map(o => o.value))
+      .sort()
+      .join();
+    const inputHash = Object.entries(schema)
+      .map(([name, fields]) => name + fields.options?.map(o => o.value))
+      .sort()
+      .join();
+    if (rawHash === inputHash) {
+      // save some I/O and dont update
+      return;
+    }
 
     const newSchema = Object.entries(schema).reduce<Schema>(
       (newSchema, [key, headingData]) => {
@@ -486,7 +506,13 @@ export default class Table {
             ? existing[0]
             : crypto.randomFillSync(Buffer.alloc(2)).toString('hex');
         }
-        newSchema[id] = { name: key, type: headingData.type };
+
+        newSchema[id] = {
+          name: key,
+          options: rawSchema[id]?.options,
+          type: headingData.type,
+        };
+
         if (headingData.options) {
           newSchema[id].options = headingData.options.reduce<
             MultiSelectOption[]
