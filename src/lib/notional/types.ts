@@ -88,7 +88,8 @@ export type BlockType =
   | 'datetime'
   | 'user'
   | 'person'
-  | 'collection_view';
+  | 'collection_view'
+  | 'collection_view_page';
 
 export type PluralBlockType = 'tables';
 
