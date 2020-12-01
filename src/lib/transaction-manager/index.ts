@@ -143,16 +143,20 @@ export default class TransactionManager {
   public async insert(data: object[][]) {
     const now = new Date().getTime();
 
-    const newBlockIds = data.map(_ => uuid());
-    const dataToInsert = data.map((row, index) => ({
+    const newBlockIds = data.map(
+      (rows: any[]) => rows.find(r => r.id === 'id')?.value || uuid(),
+    );
+    const dataToInsert = data.map((rows, index) => ({
       id: uuid(),
-      operations: row.map((entry: any) => ({
-        id: newBlockIds[index],
-        table: 'block',
-        path: ['properties', entry.id],
-        command: 'set',
-        args: this.formatToNotionTextNode(entry.type, entry.value),
-      })),
+      operations: rows
+        .filter((entry: any) => entry.id !== 'id')
+        .map((entry: any) => ({
+          id: newBlockIds[index],
+          table: 'block',
+          path: ['properties', entry.id],
+          command: 'set',
+          args: this.formatToNotionTextNode(entry.type, entry.value),
+        })),
     }));
 
     const transactions = [
